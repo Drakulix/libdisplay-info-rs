@@ -1,0 +1,8 @@
+[package]
+name = "display-info"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+display-info-sys = { version = "0.1.0", path = "display-info-sys" }
+libc = "0.2.149"
