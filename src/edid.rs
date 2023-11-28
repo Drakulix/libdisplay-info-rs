@@ -35,6 +35,22 @@ impl<'a> Edid<'a> {
 
         unsafe { std::slice::from_raw_parts(start as *const DetailedTiming<'a>, len) }
     }
+
+    pub fn display_color_type(&self) -> DisplayColorType {
+        DisplayColorType::from(unsafe { display_info_sys::di_edid_get_display_color_type(self.0) })
+    }
+
+    pub fn display_descriptors(&self) -> &[DisplayDescriptors<'a>] {
+        let start = unsafe { display_info_sys::di_edid_get_display_descriptors(self.0) };
+        let mut len = 0;
+        let mut i = unsafe { *start };
+        while !i.is_null() {
+            len += 1;
+            i = unsafe { i.offset(1) };
+        }
+
+        unsafe { std::slice::from_raw_parts(start as *const DisplayDescriptor<'a>, len) }
+    }
 }
 
 pub type AnalogComposite = display_info_sys::di_edid_detailed_timing_analog_composite;
@@ -177,4 +193,56 @@ pub enum Signal<'a> {
     DigitalComposite(&'a DigitalComposite),
     DigitalSeparate(&'a DigitalSeparate),
     Unknown,
+}
+
+pub enum DisplayColorType {
+    Monochrome,
+    Rgb,
+    NonRgb,
+    Undefined,
+}
+
+impl From<display_info_sys::di_edid_display_color_type> for DisplayColorType {
+    fn from(value: display_info_sys::di_edid_display_color_type) -> Self {
+        match value {
+            display_info_sys::di_edid_display_color_type::DI_EDID_DISPLAY_COLOR_MONOCHROME => {
+                DisplayColorType::Monochrome
+            }
+            display_info_sys::di_edid_display_color_type::DI_EDID_DISPLAY_COLOR_RGB => {
+                DisplayColorType::Rgb
+            }
+            display_info_sys::di_edid_display_color_type::DI_EDID_DISPLAY_COLOR_NON_RGB => {
+                DisplayColorType::NonRgb
+            }
+            _ => DisplayColorType::Undefined,
+        }
+    }
+}
+
+#[repr(transparent)]
+pub struct DisplayDescriptor<'a>(
+    *const display_info_sys::di_edid_detailed_timing_def,
+    std::marker::PhantomData<&'a ()>,
+);
+
+pub type ColorManagementData = display_info_sys::di_edid_color_management_data;
+pub type ColorPoint = display_info_sys::di_edid_color_point;
+
+impl<'a> DisplayDescriptor<'a> {
+    pub fn color_management_data(&self) -> &'a ColorManagementData {
+        unsafe { &*display_info_sys::di_edid_display_descriptor_get_color_management_data(self.0) }
+    }
+
+    pub fn color_points(&self) -> &'a [ColorPoint] {
+        let start =
+            unsafe { display_info_sys::di_edid_display_descriptor_get_color_points(self.0) };
+        let mut len = 0;
+        let mut i = unsafe { *start };
+        while !i.is_null() {
+            len += 1;
+            i = unsafe { i.offset(1) };
+        }
+
+        unsafe { std::slice::from_raw_parts(start as *const ColorPoint<'a>, len) }
+    }
 }
